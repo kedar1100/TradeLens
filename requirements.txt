@@ -1,0 +1,5 @@
+flask>=3.0.0
+kiteconnect>=5.0.1
+python-dotenv>=1.0.0
+pandas>=2.0.0
+plotly>=5.0.0
