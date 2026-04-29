@@ -4,11 +4,9 @@ A full-stack trading journal built on **Zerodha Kite Connect API**. Automaticall
 
 ---
 
-## Live Demo
-> **[tradelens.onrender.com](https://tradelens.onrender.com)** ← replace with your deployed URL
-
-![Dashboard preview](https://placehold.co/900x480/f4f3ee/1D9E75?text=TradeLens+Dashboard)
-
+## Screenshots
+![Dashboard preview](https://github.com/kedar1100/TradeLens/blob/main/img/dashboard.png)
+![Analytics preview](https://github.com/kedar1100/TradeLencs/blob/main/img/analytics.png)
 ---
 
 ## What it does
@@ -39,7 +37,6 @@ A full-stack trading journal built on **Zerodha Kite Connect API**. Automaticall
 ```
 trading_journal/
 ├── app.py                  # Flask server — all routes
-├── seed_demo_data.py       # Populate DB with demo trades
 ├── requirements.txt
 ├── .env.example
 │
@@ -53,10 +50,6 @@ trading_journal/
 ├── frontend/
 │   ├── dashboard.html      # Main dashboard
 │   └── analytics.html      # Advanced analytics page
-│
-└── data/
-    ├── journal.db          # SQLite database (git-ignored)
-    └── tokens.db           # Token store (git-ignored)
 ```
 
 ---
@@ -103,56 +96,13 @@ Redirect URL:  http://127.0.0.1:5000/callback
 Postback URL:  http://127.0.0.1:5000/postback
 ```
 
-**4. (Optional) Seed demo data**
-```bash
-python seed_demo_data.py
-```
-
 **5. Run**
 ```bash
 python app.py
 # Visit http://127.0.0.1:5000
 ```
 
----
-
-## Deploying to Render
-
-**1. Push to GitHub**
-```bash
-git init
-git add .
-git commit -m "initial commit"
-git remote add origin https://github.com/yourusername/tradelens
-git push -u origin main
-```
-
-**2. Create a new Web Service on [render.com](https://render.com)**
-- Build command: `pip install -r requirements.txt`
-- Start command: `gunicorn app:app`
-- Add environment variables: `KITE_API_KEY`, `KITE_API_SECRET`, `FLASK_SECRET_KEY`
-
-**3. Update Kite redirect URL**
-```
-Redirect URL: https://your-app-name.onrender.com/callback
-```
-
----
-
-## Key concepts
-
-**Why SQLite?**
-Trade data is append-only and single-user. SQLite is zero-config, fast enough for thousands of trades, and deploys as a single file. No Postgres setup needed.
-
-**Why pure Python analytics?**
-The Sharpe, Sortino, and drawdown calculations are ~50 lines of standard math. Pulling in NumPy/Pandas for that adds dependency weight with no real benefit at this scale.
-
-**Token expiry handling**
-Kite access tokens expire daily at midnight IST. The `token_store.py` module automatically detects stale tokens by comparing the creation date — no cron job needed.
-
----
-
 ## Author
 
-**Kedar Chandraprakash Oza**
+**Kedar Oza**
 [GitHub](https://github.com/kedar1100) · [LinkedIn](https://linkedin.com/in/kedar-oza1100)
