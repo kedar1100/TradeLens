@@ -7,8 +7,8 @@
 import os
 import json
 from datetime import datetime, date, timedelta
-from database import get_conn, init_db
-from kite_client import get_kite
+from backend.database import get_conn, init_db
+from backend.kite_client import get_kite
 
 
 # ─────────────────────────────────────────────
@@ -368,7 +368,7 @@ def _log_sync(sync_type: str, status: str, records: int = 0, message: str = ''):
 
 # ─────────────────────────────────────────────
 if __name__ == '__main__':
-    from database import init_db
+    from backend.database import init_db
     init_db()
     result = sync_all()
     print(result)

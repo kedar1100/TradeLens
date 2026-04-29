@@ -7,7 +7,7 @@
 import os
 from kiteconnect import KiteConnect
 from dotenv import load_dotenv
-from token_store import load_token
+from backend.token_store import load_token
 
 load_dotenv()
 

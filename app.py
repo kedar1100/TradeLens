@@ -17,13 +17,14 @@ from flask import Flask, redirect, request, session, jsonify, render_template_st
 from dotenv import load_dotenv
 from kiteconnect import KiteConnect, exceptions as KiteExceptions
 
-from token_store import save_token, clear_token, load_token
-from kite_client  import get_kite, build_unauthenticated_kite, is_authenticated
-from database     import init_db
-from sync         import (
+from backend.token_store import save_token, clear_token, load_token
+from backend.kite_client  import get_kite, build_unauthenticated_kite, is_authenticated
+from backend.database     import init_db
+from backend.sync         import (
     sync_all, get_trade_history, get_pnl_history,
     get_summary_metrics, get_equity_curve, get_instrument_breakdown
 )
+from backend.analytics    import compute_advanced_metrics
 
 load_dotenv()
 
@@ -262,6 +263,23 @@ def api_instruments():
     return jsonify(get_instrument_breakdown(days))
 
 
+@app.route('/api/analytics/advanced')
+@require_auth
+def api_advanced():
+    """
+    Full advanced metrics — Sharpe, Sortino, Calmar, drawdown,
+    streaks, weekday P&L, equity curve, CAGR. Powers the analytics page.
+    """
+    days    = int(request.args.get('days', 90))
+    capital = float(request.args.get('capital', 100_000))
+    records = get_pnl_history(days)
+    metrics = compute_advanced_metrics(records, initial_capital=capital)
+    # Convert inf to string for JSON serialisation
+    if metrics.get('profit_factor') == float('inf'):
+        metrics['profit_factor'] = 'inf'
+    return jsonify(metrics)
+
+
 # ─────────────────────────────────────────────
 #  MAIN ROUTE  (serves the dashboard or login)
 # ─────────────────────────────────────────────
@@ -271,9 +289,17 @@ def index():
     error = request.args.get('error', '')
     if not is_authenticated():
         return render_template_string(LOGIN_PAGE, error=error)
-    # Serve the full dashboard HTML
     dashboard_path = os.path.join(os.path.dirname(__file__), 'frontend', 'dashboard.html')
     with open(dashboard_path) as f:
+        return f.read()
+
+
+@app.route('/analytics')
+def analytics_page():
+    if not is_authenticated():
+        return redirect('/login')
+    apath = os.path.join(os.path.dirname(__file__), 'frontend', 'analytics.html')
+    with open(apath) as f:
         return f.read()
 
 

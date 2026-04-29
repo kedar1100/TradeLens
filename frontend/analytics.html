@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TradeLens - Analytics</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f4f3ee; --surface: #fff; --border: #e2e0d8;
+      --text: #1a1a18; --muted: #7a7870;
+      --green: #1D9E75; --green-bg: #e1f5ee;
+      --red: #c0392b; --red-bg: #fdecea;
+      --radius: 10px;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: var(--bg); color: var(--text); }
+
+    /* ── Topbar ── */
+    .topbar { background: var(--surface); border-bottom: 1px solid var(--border);
+              padding: 0 28px; height: 52px; display: flex; align-items: center;
+              justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .logo { font-size: 16px; font-weight: 600; }
+    .logo span { color: var(--green); }
+    .nav { display: flex; gap: 20px; align-items: center; }
+    .nav a { font-size: 13px; color: var(--muted); text-decoration: none; }
+    .nav a.active { color: var(--text); font-weight: 500; border-bottom: 2px solid var(--green); padding-bottom: 2px; }
+    .period-select { font-size: 12px; padding: 5px 10px; border: 1px solid var(--border);
+                     border-radius: 6px; background: var(--bg); }
+
+    /* ── Layout ── */
+    .main { padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
+
+    /* ── Section title ── */
+    .section-title { font-size: 11px; font-weight: 600; color: var(--muted);
+                     text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+
+    /* ── Cards ── */
+    .card { background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 18px 20px; }
+    .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
+                   gap: 10px; margin-bottom: 18px; }
+    .metric { background: var(--surface); border: 1px solid var(--border);
+              border-radius: var(--radius); padding: 14px 16px; }
+    .m-label { font-size: 11px; color: var(--muted); margin-bottom: 5px; }
+    .m-val   { font-size: 22px; font-weight: 600; }
+    .m-sub   { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .pos { color: var(--green); } .neg { color: var(--red); }
+
+    /* ── Two col ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+
+    /* ── Weekday bars ── */
+    .day-row { display: flex; align-items: center; gap: 10px; padding: 7px 0;
+               border-bottom: 1px solid var(--border); }
+    .day-row:last-child { border-bottom: none; }
+    .day-name { font-size: 13px; min-width: 90px; }
+    .day-bar-wrap { flex: 1; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+    .day-bar { height: 100%; border-radius: 3px; }
+    .day-pnl { font-size: 13px; font-weight: 600; min-width: 80px; text-align: right; }
+
+    /* ── Streak badges ── */
+    .streak-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .streak-badge { border-radius: 8px; padding: 14px 18px; flex: 1; min-width: 110px; }
+    .streak-badge .num { font-size: 32px; font-weight: 700; }
+    .streak-badge .lbl { font-size: 11px; margin-top: 4px; opacity: 0.8; }
+
+    /* ── Ratio gauge ── */
+    .gauge-wrap { display: flex; flex-direction: column; align-items: center; padding: 10px 0; }
+    .gauge-val  { font-size: 36px; font-weight: 700; margin-bottom: 4px; }
+    .gauge-label{ font-size: 12px; color: var(--muted); }
+    .gauge-bar  { width: 100%; height: 6px; background: var(--bg); border-radius: 3px;
+                  margin-top: 8px; overflow: hidden; }
+    .gauge-fill { height: 100%; border-radius: 3px; background: var(--green); }
+    .gauge-hint { font-size: 10px; color: var(--muted); margin-top: 5px; }
+
+    .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+    .mt { margin-top: 18px; }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo">Trade<span>Lens</span></div>
+  <nav class="nav">
+    <a href="/">Dashboard</a>
+    <a href="/analytics" class="active">Analytics</a>
+    <a href="/logout">Logout</a>
+  </nav>
+  <select class="period-select" id="periodSelect" onchange="load()">
+    <option value="30">Last 30 days</option>
+    <option value="90" selected>Last 90 days</option>
+    <option value="365">This year</option>
+  </select>
+</header>
+
+<main class="main">
+
+  <!-- ── Risk-Adjusted Returns ─────────────── -->
+  <div class="section-title">Risk-adjusted returns</div>
+  <div class="metric-grid" id="returnMetrics">
+    <div class="metric"><div class="m-label">Total return</div><div class="m-val" id="mReturn">—</div></div>
+    <div class="metric"><div class="m-label">CAGR</div><div class="m-val" id="mCagr">—</div><div class="m-sub">annualised</div></div>
+    <div class="metric"><div class="m-label">Annualised vol</div><div class="m-val" id="mVol">—</div></div>
+    <div class="metric"><div class="m-label">Sharpe ratio</div><div class="m-val" id="mSharpe">—</div><div class="m-sub">≥1 is good · ≥2 is great</div></div>
+    <div class="metric"><div class="m-label">Sortino ratio</div><div class="m-val" id="mSortino">—</div><div class="m-sub">downside-adjusted</div></div>
+    <div class="metric"><div class="m-label">Calmar ratio</div><div class="m-val" id="mCalmar">—</div><div class="m-sub">CAGR / max drawdown</div></div>
+  </div>
+
+  <!-- ── Equity curve ──────────────────────── -->
+  <div class="card mt" style="margin-bottom:18px">
+    <div class="section-title">Equity curve</div>
+    <div style="position:relative;height:240px">
+      <canvas id="equityChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Drawdown + Trade metrics ─────────── -->
+  <div class="two-col">
+    <div class="card">
+      <div class="section-title">Drawdown analysis</div>
+      <div style="position:relative;height:180px;margin-bottom:14px">
+        <canvas id="ddChart"></canvas>
+      </div>
+      <div class="metric-grid" style="grid-template-columns:1fr 1fr;gap:8px;margin:0">
+        <div class="metric"><div class="m-label">Max drawdown</div><div class="m-val neg" id="mMaxDD">—</div></div>
+        <div class="metric"><div class="m-label">Avg drawdown</div><div class="m-val" id="mAvgDD">—</div></div>
+        <div class="metric"><div class="m-label">Max DD value</div><div class="m-val neg" id="mMaxDDVal">—</div></div>
+        <div class="metric"><div class="m-label">Avg recovery</div><div class="m-val" id="mRecovery">—</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">Trade quality</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <div class="metric"><div class="m-label">Win rate</div><div class="m-val" id="mWinRate">—</div></div>
+        <div class="metric"><div class="m-label">Profit factor</div><div class="m-val" id="mPF">—</div></div>
+        <div class="metric"><div class="m-label">Expectancy</div><div class="m-val" id="mExp">—</div><div class="m-sub">avg Rs. per trade</div></div>
+        <div class="metric"><div class="m-label">R:R ratio</div><div class="m-val" id="mRR">—</div><div class="m-sub">avg win / avg loss</div></div>
+        <div class="metric"><div class="m-label">Avg win</div><div class="m-val pos" id="mAvgWin">—</div></div>
+        <div class="metric"><div class="m-label">Avg loss</div><div class="m-val neg" id="mAvgLoss">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Streaks + Weekday ─────────────────── -->
+  <div class="two-col mt">
+    <div class="card">
+      <div class="section-title">Win / loss streaks</div>
+      <div class="streak-row" style="margin-bottom:16px">
+        <div class="streak-badge" style="background:var(--green-bg);color:var(--green)">
+          <div class="num" id="sMaxWin">—</div>
+          <div class="lbl">Max win streak</div>
+        </div>
+        <div class="streak-badge" style="background:var(--red-bg);color:var(--red)">
+          <div class="num" id="sMaxLoss">—</div>
+          <div class="lbl">Max loss streak</div>
+        </div>
+        <div class="streak-badge" style="background:#f4f3ee;color:var(--text)" id="sCurrentBadge">
+          <div class="num" id="sCurrent">—</div>
+          <div class="lbl" id="sCurrentLabel">Current streak</div>
+        </div>
+      </div>
+      <div style="position:relative;height:160px">
+        <canvas id="winLossChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">P&amp;L by day of week</div>
+      <div id="weekdayBars"><div class="empty">Loading…</div></div>
+      <div style="margin-top:14px;font-size:12px;color:var(--muted)">
+        Best day: <strong id="bestDay">—</strong> &nbsp;·&nbsp;
+        Worst day: <strong id="worstDay">—</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Monthly P&L bar ───────────────────── -->
+  <div class="card mt">
+    <div class="section-title">Monthly P&amp;L</div>
+    <div style="position:relative;height:180px">
+      <canvas id="monthChart"></canvas>
+    </div>
+  </div>
+
+</main>
+
+<script>
+let charts = {};
+
+async function load() {
+  const d = document.getElementById('periodSelect').value;
+  try {
+    const m = await fetch(`/api/analytics/advanced?days=${d}`).then(r => r.json());
+    renderReturnMetrics(m);
+    renderDrawdown(m);
+    renderTradeMetrics(m);
+    renderStreaks(m);
+    renderWeekday(m);
+    renderEquityCurve(m.equity_curve || []);
+    renderMonthly(m.month_pnl || {});
+    renderWinLoss(m);
+  } catch(e) {
+    console.error('Analytics load error:', e);
+  }
+}
+
+const fmt = v => (v>=0?'+':'-') + 'Rs.' + Math.abs(v).toLocaleString('en-IN',{maximumFractionDigits:0});
+const pct = v => (v>=0?'+':'') + v.toFixed(2) + '%';
+const colorClass = v => v >= 0 ? 'pos' : 'neg';
+
+function renderReturnMetrics(m) {
+  const set = (id, val, cls) => {
+    const el = document.getElementById(id);
+    el.textContent = val;
+    if (cls) el.className = 'm-val ' + cls;
+  };
+  set('mReturn',  pct(m.total_return_pct||0), colorClass(m.total_return_pct||0));
+  set('mCagr',    pct(m.cagr_pct||0),         colorClass(m.cagr_pct||0));
+  set('mVol',     (m.annualised_vol_pct||0).toFixed(2)+'%');
+  set('mSharpe',  (m.sharpe_ratio||0).toFixed(2));
+  set('mSortino', (m.sortino_ratio||0).toFixed(2));
+  set('mCalmar',  (m.calmar_ratio||0).toFixed(2));
+}
+
+function renderDrawdown(m) {
+  document.getElementById('mMaxDD').textContent    = (m.max_drawdown_pct||0).toFixed(2) + '%';
+  document.getElementById('mAvgDD').textContent    = (m.avg_drawdown_pct||0).toFixed(2) + '%';
+  document.getElementById('mMaxDDVal').textContent = fmt(m.max_drawdown_value||0);
+  document.getElementById('mRecovery').textContent = (m.avg_recovery_days||0) + ' days';
+
+  // Drawdown curve from equity curve
+  const eq     = m.equity_curve || [];
+  const values = eq.map(e => e.value);
+  let peak     = values[0] || 0;
+  const ddPcts = values.map(v => {
+    if (v > peak) peak = v;
+    return peak > 0 ? ((v - peak) / peak * 100) : 0;
+  });
+
+  const ctx = document.getElementById('ddChart').getContext('2d');
+  if (charts.dd) charts.dd.destroy();
+  if (!eq.length) return;
+
+  charts.dd = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: eq.map(e => e.date),
+      datasets: [{
+        label: 'Drawdown %',
+        data: ddPcts,
+        borderColor: '#c0392b',
+        backgroundColor: 'rgba(192,57,43,0.1)',
+        fill: true, tension: 0.3,
+        pointRadius: 0, borderWidth: 1.5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: {display:false}, tooltip: { callbacks: { label: c => c.raw.toFixed(2)+'%' } } },
+      scales: {
+        x: { display:false },
+        y: { grid:{color:'rgba(0,0,0,0.04)'}, ticks:{color:'#7a7870',font:{size:9}, callback: v => v.toFixed(1)+'%'} }
+      }
+    }
+  });
+}
+
+function renderTradeMetrics(m) {
+  document.getElementById('mWinRate').textContent  = (m.win_rate_pct||0).toFixed(1) + '%';
+  document.getElementById('mPF').textContent       = m.profit_factor === 'inf' ? '∞' : (m.profit_factor||0).toFixed(2);
+  document.getElementById('mExp').textContent      = fmt(m.expectancy||0);
+  document.getElementById('mRR').textContent       = (m.rr_ratio||0).toFixed(2);
+  document.getElementById('mAvgWin').textContent   = 'Rs.' + Math.abs(m.avg_win||0).toLocaleString('en-IN',{maximumFractionDigits:0});
+  document.getElementById('mAvgLoss').textContent  = 'Rs.' + Math.abs(m.avg_loss||0).toLocaleString('en-IN',{maximumFractionDigits:0});
+}
+
+function renderStreaks(m) {
+  document.getElementById('sMaxWin').textContent   = m.max_win_streak  || 0;
+  document.getElementById('sMaxLoss').textContent  = m.max_loss_streak || 0;
+  document.getElementById('sCurrent').textContent  = m.current_streak  || 0;
+  document.getElementById('sCurrentLabel').textContent = (m.current_streak_type||'') + ' streak';
+  const badge = document.getElementById('sCurrentBadge');
+  badge.style.background = m.current_streak_type === 'win' ? 'var(--green-bg)' : 'var(--red-bg)';
+  badge.style.color      = m.current_streak_type === 'win' ? 'var(--green)'    : 'var(--red)';
+}
+
+function renderWeekday(m) {
+  const data    = m.weekday_pnl || {};
+  const order   = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+  const max     = Math.max(...Object.values(data).map(Math.abs), 1);
+  const el      = document.getElementById('weekdayBars');
+
+  if (!Object.keys(data).length) {
+    el.innerHTML = '<div class="empty">No data</div>'; return;
+  }
+
+  el.innerHTML = order.filter(d => data[d] !== undefined).map(day => {
+    const v    = data[day] || 0;
+    const pct  = Math.abs(v) / max * 100;
+    const col  = v >= 0 ? 'var(--green)' : 'var(--red)';
+    return `
+    <div class="day-row">
+      <div class="day-name">${day}</div>
+      <div class="day-bar-wrap"><div class="day-bar" style="width:${pct.toFixed(1)}%;background:${col}"></div></div>
+      <div class="day-pnl" style="color:${col}">${fmt(v)}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('bestDay').textContent  = m.best_weekday  || '—';
+  document.getElementById('worstDay').textContent = m.worst_weekday || '—';
+}
+
+function renderEquityCurve(curve) {
+  const ctx = document.getElementById('equityChart').getContext('2d');
+  if (charts.equity) charts.equity.destroy();
+  if (!curve.length) return;
+
+  const values = curve.map(e => e.value);
+  const last   = values[values.length-1];
+  const first  = values[0];
+
+  charts.equity = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: curve.map(e => e.date),
+      datasets: [{
+        label: 'Portfolio value',
+        data: values,
+        borderColor: last >= first ? '#1D9E75' : '#c0392b',
+        backgroundColor: last >= first ? 'rgba(29,158,117,0.07)' : 'rgba(192,57,43,0.07)',
+        fill: true, tension: 0.35,
+        pointRadius: curve.length > 30 ? 0 : 3,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{display:false}, tooltip:{ callbacks:{ label: c => 'Rs.'+c.raw.toLocaleString('en-IN') } } },
+      scales: {
+        x: { grid:{display:false}, ticks:{color:'#7a7870',font:{size:10},maxTicksLimit:8} },
+        y: { grid:{color:'rgba(0,0,0,0.04)'}, ticks:{ color:'#7a7870', font:{size:10},
+               callback: v => 'Rs.'+(v/1000).toFixed(0)+'k' } }
+      }
+    }
+  });
+}
+
+function renderMonthly(monthPnl) {
+  const ctx    = document.getElementById('monthChart').getContext('2d');
+  if (charts.month) charts.month.destroy();
+  const order  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const labels = order.filter(m => monthPnl[m] !== undefined);
+  const values = labels.map(m => Math.round(monthPnl[m]));
+  if (!values.length) return;
+
+  charts.month = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Monthly P&L',
+        data: values,
+        backgroundColor: values.map(v => v >= 0 ? 'rgba(29,158,117,0.8)' : 'rgba(192,57,43,0.8)'),
+        borderRadius: 4, borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{display:false}, tooltip:{ callbacks:{ label: c => fmt(c.raw) } } },
+      scales: {
+        x: { grid:{display:false}, ticks:{color:'#7a7870',font:{size:11}} },
+        y: { grid:{color:'rgba(0,0,0,0.04)'}, ticks:{ color:'#7a7870', font:{size:10},
+               callback: v => (v>=0?'+':'')+'Rs.'+(v/1000).toFixed(1)+'k' } }
+      }
+    }
+  });
+}
+
+function renderWinLoss(m) {
+  const ctx = document.getElementById('winLossChart').getContext('2d');
+  if (charts.wl) charts.wl.destroy();
+  const w = m.total_winners || 0;
+  const l = m.total_losers  || 0;
+  if (!w && !l) return;
+
+  charts.wl = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Winners', 'Losers'],
+      datasets: [{ data: [w, l],
+        backgroundColor: ['rgba(29,158,117,0.85)', 'rgba(192,57,43,0.85)'],
+        borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '70%',
+      plugins: {
+        legend: { position:'bottom', labels:{ font:{size:11}, color:'#7a7870', padding:12 } },
+        tooltip: { callbacks: { label: c => `${c.label}: ${c.raw} trades` } }
+      }
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', load);
+</script>
+</body>
+</html>
