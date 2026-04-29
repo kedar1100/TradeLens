@@ -6,7 +6,7 @@ A full-stack trading journal built on **Zerodha Kite Connect API**. Automaticall
 
 ## Screenshots
 ![Dashboard preview](https://github.com/kedar1100/TradeLens/blob/main/img/dashboard.png)
-![Analytics preview](https://github.com/kedar1100/TradeLencs/blob/main/img/analytics.png)
+![Analytics preview](https://github.com/kedar1100/TradeLens/blob/main/img/analytics.png)
 ---
 
 ## What it does
