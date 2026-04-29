@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: tradelens
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: KITE_API_KEY
+        sync: false
+      - key: KITE_API_SECRET
+        sync: false
+      - key: FLASK_SECRET_KEY
+        sync: false
+      - key: REDIRECT_URL
+        sync: false
