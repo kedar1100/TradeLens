@@ -77,8 +77,8 @@ All analytics endpoints accept a `?days=30` query param.
 
 **1. Clone and install**
 ```bash
-git clone https://github.com/yourusername/tradelens
-cd tradelens
+git clone https://github.com/kedar1100/TradeLens
+cd TradeLens
 pip install -r requirements.txt
 ```
 
