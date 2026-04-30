@@ -28,7 +28,6 @@ A full-stack trading journal built on **Zerodha Kite Connect API**. Automaticall
 | Database | SQLite (via Python `sqlite3`) |
 | Analytics | Pure Python — NumPy-free Sharpe/Sortino/drawdown |
 | Frontend | Vanilla JS + Chart.js 4.4 |
-| Deploy | Render (free tier) |
 
 ---
 
